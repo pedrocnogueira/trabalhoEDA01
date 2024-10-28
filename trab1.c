@@ -88,16 +88,24 @@ void imprimeTabela() {
     }
 }
 
-// Funcao hash - metodo da divisao
-int hash(unsigned long long x) {
-    return x % TABLE_SIZE;
+// Funcao hash 1 - metodo da divisao com mult por cte
+int hashParcial2(unsigned long long x) {
+    unsigned long long hash = x * 2654435761;
+    return (int)(hash % TABLE_SIZE);
+}
+
+// Funcao hash 2 - metodo da dobra xor
+int hashParcial1(unsigned long long x) {
+    unsigned int first_half = (unsigned int)(x >> 32);
+    unsigned int last_half = (unsigned int)(x & 0xFFFFFFFF);
+    return (first_half ^ last_half) % TABLE_SIZE;
 }
 
 // Funcao para inserir na tabela hash
 void insereHash(unsigned long long x) {
     int k = 0;
     int maxProbes = TABLE_SIZE;
-    int originalHash = hash(x) % TABLE_SIZE;
+    int originalHash = hashParcial1(x) % TABLE_SIZE;
     int hashResult = originalHash;
 
     while (hashTable[hashResult] != EMPTY_SLOT) {
@@ -107,7 +115,7 @@ void insereHash(unsigned long long x) {
         }
         k++;
         colisoes++; // Increment collision counter for each collision
-        hashResult = (originalHash + k + k*k) % TABLE_SIZE;
+        hashResult = (originalHash + (k * hashParcial2(x))) % TABLE_SIZE;
 
         if (k >= maxProbes) {
             // All slots have been probed; the table is full
@@ -124,7 +132,7 @@ void insereHash(unsigned long long x) {
 int buscaHash(unsigned long long value) {
     int k = 0;
     int maxProbes = TABLE_SIZE;
-    int originalHash = hash(value);
+    int originalHash = hashParcial1(value);
     int hashResult = originalHash;
 
     while (hashTable[hashResult] != EMPTY_SLOT) {
@@ -133,7 +141,7 @@ int buscaHash(unsigned long long value) {
             return hashResult;
         }
         k++;
-        hashResult = (originalHash + k + k * k) % TABLE_SIZE;
+        hashResult = (originalHash + (k * hashParcial2(value))) % TABLE_SIZE;
 
         if (k >= maxProbes) {
             // All slots have been probed; the value is not in the table
