@@ -6,89 +6,120 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
-#define TABLE_SIZE 1200  // Tamanho maior para evitar muitas colisões
-#define CPF_LENGTH 12    // Cada CPF tem 11 dígitos + '\0'
+#define TABLE_SIZE 1009  // Tamanho >= n de entradas; tamanho primo
+#define EMPTY_SLOT 0ULL // Define a value that represents an empty slot
 
 // Estrutura para armazenar um CPF na tabela hash
-typedef struct {
-    char cpf[CPF_LENGTH];
-    int ocupado; // 0: livre, 1: ocupado
-} HashEntry;
 
-HashEntry hashTable[TABLE_SIZE]; // Tabela hash
+unsigned long long hashTable[TABLE_SIZE]; // Tabela hash
+int colisoes = 0;
 
-// Função de hash simples usando módulo da soma dos dígitos
-int hashFunction(const char *cpf) {
-    int soma = 0;
-    for (int i = 0; cpf[i] != '\0'; i++) {
-        soma += cpf[i] - '0';  // Converte char para int
+void zeraTabela() {
+        for (int i = 0; i < TABLE_SIZE; i++) {
+        hashTable[i] = EMPTY_SLOT;
     }
-    return soma % TABLE_SIZE;
 }
 
-// Inserção na tabela hash com tratamento de colisões (Linear Probing)
-int inserirCPF(const char *cpf) {
-    int index = hashFunction(cpf);
-    int colisoes = 0;
-
-    while (hashTable[index].ocupado) {
-        colisoes++;
-        index = (index + 1) % TABLE_SIZE;  // Linear Probing
+unsigned long long converteCPF(char* c) {
+    unsigned long long n = 0;
+    for (int i = 10; i > 0; i--) {
+        n += (unsigned long long)(*c++ - '0') * pow(10, i);
     }
-
-    strcpy(hashTable[index].cpf, cpf);
-    hashTable[index].ocupado = 1;
-
-    return colisoes;
+    return n;
 }
 
-// Inicializa a tabela hash
-void inicializarTabela() {
+int hash(unsigned long long x) {
+    return x % TABLE_SIZE;
+}
+
+void insereHash(unsigned long long x) {
+    int k = 0;
+    int maxProbes = TABLE_SIZE;
+    int originalHash = hash(x) % TABLE_SIZE;
+    int hashResult = originalHash;
+
+    while (hashTable[hashResult] != EMPTY_SLOT) {
+        if (hashTable[hashResult] == x) {
+            // The value already exists in the hash table; no need to insert
+            return;
+        }
+        k++;
+        colisoes++; // Increment collision counter for each collision
+        hashResult = (originalHash + k + k*k) % TABLE_SIZE;
+
+        if (k >= maxProbes) {
+            // All slots have been probed; the table is full
+            printf("Hash table is full. Cannot insert %llu.\n", x);
+            return;
+        }
+    }
+
+    // Insert the value into the empty slot
+    hashTable[hashResult] = x;
+}
+
+int leInsere(FILE* arq, int qtd) {
+    unsigned long long num;
+    int count = 0;
+    while (count < qtd && fscanf(arq, "%llu", &num) == 1) {
+        insereHash(num);
+        count++;
+    }
+    return count;
+}
+
+void imprimeTabela() {
+    FILE* arq = fopen("hashTable.txt", "w");
     for (int i = 0; i < TABLE_SIZE; i++) {
-        hashTable[i].ocupado = 0;
+        if (hashTable[i] == EMPTY_SLOT) {
+            fprintf(arq, "> %04d: Vazio\n", i);
+        } else {
+            fprintf(arq, "> %04d: %011llu\n", i, hashTable[i]);
+        }
     }
 }
 
-// Leitura dos CPFs de um arquivo e inserção na tabela
-int carregarCPFs(const char *nomeArquivo, int limite) {
-    FILE *arquivo = fopen(nomeArquivo, "r");
-    if (!arquivo) {
-        perror("Erro ao abrir o arquivo");
-        exit(EXIT_FAILURE);
-    }
-
-    char cpf[CPF_LENGTH];
-    int colisoesTotais = 0;
-    int inseridos = 0;
-
-    while (fscanf(arquivo, "%s", cpf) != EOF && inseridos < limite) {
-        colisoesTotais += inserirCPF(cpf);
-        inseridos++;
-    }
-
-    fclose(arquivo);
-    return colisoesTotais;
-}
-
-// Função principal
-int main() {
-    inicializarTabela();
-
-    FILE *saida = fopen("colisoes.txt", "w");
-    if (!saida) {
-        perror("Erro ao criar o arquivo de saída");
+int main(void) {
+    // Open the input file for reading
+    FILE* file = fopen("cpfs.txt", "r");
+    if (file == NULL) {
+        printf("Error opening input file.\n");
         return EXIT_FAILURE;
     }
 
-    printf("Inserindo CPFs na tabela...\n");
-    for (int i = 100; i <= 1000; i += 100) {
-        int colisoes = carregarCPFs("cpfs.txt", i);
-        printf("CPFs inseridos: %d, Colisões: %d\n", i, colisoes);
-        fprintf(saida, "%d %d\n", i, colisoes);
+    // Open the output CSV file for writing
+    FILE* csvFile = fopen("collisions.csv", "w");
+    if (csvFile == NULL) {
+        printf("Error opening output CSV file.\n");
+        fclose(file);
+        return EXIT_FAILURE;
     }
 
-    fclose(saida);
-    printf("Processo concluído! Dados salvos em 'colisoes.txt'.\n");
+    fprintf(csvFile, "Entries,Collisions\n"); // Write CSV header
+
+    // Loop over 10 iterations, inserting 100, 200, ..., 1000 entries
+    for (int qtd = 100; qtd <= 1000; qtd += 100) {
+        zeraTabela(); // Initialize the hash table
+        colisoes = 0; // Reset collision counter
+
+        // Reset file pointer to the beginning
+        fseek(file, 0, SEEK_SET);
+
+        // Read and insert 'qtd' numbers
+        int inserted = leInsere(file, qtd);
+
+        printf("Inserted %d numbers into the hash table.\n", inserted);
+        printf("Total collisions encountered: %d\n", colisoes);
+        printf("Total empty positions: %d\n", TABLE_SIZE - inserted);
+
+        // Write the result to the CSV file
+        fprintf(csvFile, "%d,%d\n", qtd, colisoes);
+    }
+
+    fclose(file);     // Close the input file
+    fclose(csvFile);  // Close the CSV file
+
     return 0;
 }
