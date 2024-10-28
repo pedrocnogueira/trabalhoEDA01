@@ -8,7 +8,7 @@
 #include <string.h>
 #include <math.h>
 
-#define TABLE_SIZE 1009  // Tamanho >= n de entradas; tamanho primo
+#define TABLE_SIZE 1319  // Tamanho >= n de entradas; tamanho primo; alpha ~= 0.76
 #define EMPTY_SLOT 0ULL // Define a value that represents an empty slot
 
 // Estrutura para armazenar um CPF na tabela hash
