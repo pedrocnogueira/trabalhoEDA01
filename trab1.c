@@ -9,102 +9,21 @@
 #include <math.h>
 
 #define TABLE_SIZE 1319  // Tamanho >= n de entradas; tamanho primo; alpha ~= 0.76
-#define EMPTY_SLOT 0ULL // Define a value that represents an empty slot
-
-// Estrutura para armazenar um CPF na tabela hash
+#define EMPTY_SLOT 0ULL // Valor de uma posição vazia
 
 unsigned long long hashTable[TABLE_SIZE]; // Tabela hash
-int colisoes = 0;
+int colisoes = 0; // Contador de colisoes
 
-void zeraTabela() {
-        for (int i = 0; i < TABLE_SIZE; i++) {
-        hashTable[i] = EMPTY_SLOT;
-    }
-}
+/* Prototipos */
+void zeraTabela();
+void imprimeTabela();
+int hash(unsigned long long x);
+int leInsere(FILE* arq, int qtd);
+void insereHash(unsigned long long x);
+int buscaHash(unsigned long long value);
+unsigned long long converteCPF(char* c);
 
-unsigned long long converteCPF(char* c) {
-    unsigned long long n = 0;
-    for (int i = 10; i > 0; i--) {
-        n += (unsigned long long)(*c++ - '0') * pow(10, i);
-    }
-    return n;
-}
-
-int hash(unsigned long long x) {
-    return x % TABLE_SIZE;
-}
-
-void insereHash(unsigned long long x) {
-    int k = 0;
-    int maxProbes = TABLE_SIZE;
-    int originalHash = hash(x) % TABLE_SIZE;
-    int hashResult = originalHash;
-
-    while (hashTable[hashResult] != EMPTY_SLOT) {
-        if (hashTable[hashResult] == x) {
-            // The value already exists in the hash table; no need to insert
-            return;
-        }
-        k++;
-        colisoes++; // Increment collision counter for each collision
-        hashResult = (originalHash + k + k*k) % TABLE_SIZE;
-
-        if (k >= maxProbes) {
-            // All slots have been probed; the table is full
-            printf("Hash table is full. Cannot insert %llu.\n", x);
-            return;
-        }
-    }
-
-    // Insert the value into the empty slot
-    hashTable[hashResult] = x;
-}
-
-int buscaHash(unsigned long long value) {
-    int k = 0;
-    int maxProbes = TABLE_SIZE;
-    int originalHash = hash(value);
-    int hashResult = originalHash;
-
-    while (hashTable[hashResult] != EMPTY_SLOT) {
-        if (hashTable[hashResult] == value) {
-            // Value found at index 'hashResult'
-            return hashResult;
-        }
-        k++;
-        hashResult = (originalHash + k + k * k) % TABLE_SIZE;
-
-        if (k >= maxProbes) {
-            // All slots have been probed; the value is not in the table
-            break;
-        }
-    }
-
-    // Value not found
-    return -1;
-}
-
-int leInsere(FILE* arq, int qtd) {
-    unsigned long long num;
-    int count = 0;
-    while (count < qtd && fscanf(arq, "%llu", &num) == 1) {
-        insereHash(num);
-        count++;
-    }
-    return count;
-}
-
-void imprimeTabela() {
-    FILE* arq = fopen("hashTable.txt", "w");
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        if (hashTable[i] == EMPTY_SLOT) {
-            fprintf(arq, "> %04d: Vazio\n", i);
-        } else {
-            fprintf(arq, "> %04d: %011llu\n", i, hashTable[i]);
-        }
-    }
-}
-
+/* Bloco Principal */
 int main(void) {
     // Open the input file for reading
     FILE* file = fopen("cpfs.txt", "r");
@@ -146,4 +65,93 @@ int main(void) {
     fclose(csvFile);  // Close the CSV file
 
     return 0;
+}
+
+/* Funcoes Auxiliares */
+
+// Funcao para insereir valor vazio em todas as posições
+void zeraTabela() {
+        for (int i = 0; i < TABLE_SIZE; i++) {
+        hashTable[i] = EMPTY_SLOT;
+    }
+}
+
+// Funcao para printar a tabela em um txt para testes
+void imprimeTabela() {
+    FILE* arq = fopen("hashTable.txt", "w");
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        if (hashTable[i] == EMPTY_SLOT) {
+            fprintf(arq, "> %04d: Vazio\n", i);
+        } else {
+            fprintf(arq, "> %04d: %011llu\n", i, hashTable[i]);
+        }
+    }
+}
+
+// Funcao hash - metodo da divisao
+int hash(unsigned long long x) {
+    return x % TABLE_SIZE;
+}
+
+// Funcao para inserir na tabela hash
+void insereHash(unsigned long long x) {
+    int k = 0;
+    int maxProbes = TABLE_SIZE;
+    int originalHash = hash(x) % TABLE_SIZE;
+    int hashResult = originalHash;
+
+    while (hashTable[hashResult] != EMPTY_SLOT) {
+        if (hashTable[hashResult] == x) {
+            // The value already exists in the hash table; no need to insert
+            return;
+        }
+        k++;
+        colisoes++; // Increment collision counter for each collision
+        hashResult = (originalHash + k + k*k) % TABLE_SIZE;
+
+        if (k >= maxProbes) {
+            // All slots have been probed; the table is full
+            printf("Hash table is full. Cannot insert %llu.\n", x);
+            return;
+        }
+    }
+
+    // Insert the value into the empty slot
+    hashTable[hashResult] = x;
+}
+
+// Funcao para buscar na tabela hash
+int buscaHash(unsigned long long value) {
+    int k = 0;
+    int maxProbes = TABLE_SIZE;
+    int originalHash = hash(value);
+    int hashResult = originalHash;
+
+    while (hashTable[hashResult] != EMPTY_SLOT) {
+        if (hashTable[hashResult] == value) {
+            // Value found at index 'hashResult'
+            return hashResult;
+        }
+        k++;
+        hashResult = (originalHash + k + k * k) % TABLE_SIZE;
+
+        if (k >= maxProbes) {
+            // All slots have been probed; the value is not in the table
+            break;
+        }
+    }
+
+    // Value not found
+    return -1;
+}
+
+// Funcao para ler o arquivo e inserir cada linha na tabela
+int leInsere(FILE* arq, int qtd) {
+    unsigned long long num;
+    int count = 0;
+    while (count < qtd && fscanf(arq, "%llu", &num) == 1) {
+        insereHash(num);
+        count++;
+    }
+    return count;
 }
