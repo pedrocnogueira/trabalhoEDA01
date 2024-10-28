@@ -60,6 +60,30 @@ void insereHash(unsigned long long x) {
     hashTable[hashResult] = x;
 }
 
+int buscaHash(unsigned long long value) {
+    int k = 0;
+    int maxProbes = TABLE_SIZE;
+    int originalHash = hash(value);
+    int hashResult = originalHash;
+
+    while (hashTable[hashResult] != EMPTY_SLOT) {
+        if (hashTable[hashResult] == value) {
+            // Value found at index 'hashResult'
+            return hashResult;
+        }
+        k++;
+        hashResult = (originalHash + k + k * k) % TABLE_SIZE;
+
+        if (k >= maxProbes) {
+            // All slots have been probed; the value is not in the table
+            break;
+        }
+    }
+
+    // Value not found
+    return -1;
+}
+
 int leInsere(FILE* arq, int qtd) {
     unsigned long long num;
     int count = 0;
