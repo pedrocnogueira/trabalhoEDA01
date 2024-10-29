@@ -8,7 +8,7 @@
 #include <string.h>
 #include <math.h>
 
-#define TABLE_SIZE 1319  // Tamanho >= n de entradas; tamanho primo; alpha ~= 0.76
+#define TABLE_SIZE 1201  // Tamanho >= n de entradas; tamanho primo; alpha ~= 0.76
 #define EMPTY_SLOT 0ULL // Valor de uma posição vazia
 
 unsigned long long hashTable[TABLE_SIZE]; // Tabela hash
